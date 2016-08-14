@@ -10,14 +10,12 @@ from flask import Flask, request
 import telegram
 from storage import Storage
 
-logging.basicConfig(handlers=[logging.StreamHandler(sys.stdout)],
-                    level=logging.INFO,
-                    format='%(levelname)-8s|'
-                           '%(process)d|%(name)s|%(module)s|%(funcName)s::%(lineno)d|%(message)s')
+logging.basicConfig(handlers=[logging.StreamHandler(sys.stdout)], level=logging.INFO,
+                    format='%(levelname)-8s|%(process)d|%(name)s|%(module)s|%(funcName)s::%(lineno)d|%(message)s')
 
-HOST = 'HOST'
+HOST = os.environ.get("hostname")
 PORT = int(os.environ.get("PORT", 5000))
-TOKEN = 'TOKEN'
+TOKEN = os.environ.get('token')
 
 app = Flask(__name__)
 bot = None
@@ -36,7 +34,8 @@ def action_digest(message):
         for item in items:
             text = 'time: ' + item['time'] + '\n' + \
                    'args: ' + json.dumps(item['args'], indent=4, separators=(',', ': ')) + '\n' + \
-                   'form: ' + json.dumps(item['form'], indent=4, separators=(',', ': '))
+                   'form: ' + json.dumps(item['form'], indent=4, separators=(',', ': ')) + '\n' + \
+                   'data: ' + json.dumps(item['data'], indent=4, separators=(',', ': '))
             bot.sendMessage(chat_id, text=text)
         storage.erase()
     else:
@@ -67,13 +66,14 @@ def telegram_hook():
         return "not ok", 500
 
 
-@app.route('/request')
+@app.route('/request', methods=['GET', 'POST'])
 def http_request():
     try:
         storage.put({
             'time': str(datetime.datetime.now()),
             'args': request.args,
-            'form': request.form
+            'form': request.form,
+            'data': str(request.data)
         })
         return 'ok', 200
     except Exception as e:
